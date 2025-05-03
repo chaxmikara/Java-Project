@@ -39,8 +39,17 @@ public class AuthController {
             AuthzenResponse<UserResponse> response = new AuthzenResponse<>(userResponse);
             response.setMessage("User registered successfully");
             return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            // Return a more specific error message from the exception
+            AuthzenResponse<UserResponse> errorResponse = new AuthzenResponse<>(
+                null, false, e.getMessage().contains(":") ? e.getMessage() : "Unexpected error: " + e.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         } catch (Exception e) {
-            throw new RuntimeException("An error occurred during registration");
+            AuthzenResponse<UserResponse> errorResponse = new AuthzenResponse<>(
+                null, false, "Unexpected error: An error occurred during registration"
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 

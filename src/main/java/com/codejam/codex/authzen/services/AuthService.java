@@ -55,29 +55,50 @@ public class AuthService {
      * @return true if registration was successful, false otherwise.
      */
     public UserResponse registerUser(RegisterRequest request) {
+        try {
+            // Check if email or username already exists
+            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                throw new RuntimeException("Email already exists");
+            }
+            if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+                throw new RuntimeException("Username already exists");
+            }
 
-        List<Role> roles = roleRepository.findByName("ROLE_USER");
-        if (roles.isEmpty()) {
-            throw new RuntimeException("Default role not found: ROLE_USER");
+            // Find the USER role
+            List<Role> roles = roleRepository.findByName("ROLE_USER");
+            if (roles.isEmpty()) {
+                throw new RuntimeException("Default role not found: ROLE_USER");
+            }
+            Role userRole = roles.get(0);
+
+            // Create new user
+            User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .isActive(true)
+                .isLocked(false)
+                .createdAt(new java.sql.Timestamp(System.currentTimeMillis()))
+                .build();
+
+            // Create user role mapping
+            UserRole userRoleMapping = new UserRole();
+            userRoleMapping.setUser(user);
+            userRoleMapping.setRole(userRole);
+            
+            // Add role to user
+            user.getUserRoles().add(userRoleMapping);
+
+            // Save user
+            User savedUser = userRepository.save(user);
+
+            // Get user permissions
+            List<String> permissionNames = userRepository.findPermissionNamesByUsername(savedUser.getUsername());
+
+            return UserResponse.fromEntity(savedUser, permissionNames);
+        } catch (Exception e) {
+            throw new RuntimeException("An error occurred during registration: " + e.getMessage());
         }
-        Role userRole = roles.get(0);
-
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setActive(true);
-        user.setCreatedAt(new java.sql.Timestamp(System.currentTimeMillis()));
-
-        UserRole userRoleMapping = new UserRole();
-        userRoleMapping.setUser(new User());
-        userRoleMapping.setRole(userRole);
-        user.getUserRoles().add(userRoleMapping);
-
-        userRepository.save(new User());
-        List<String> permissionNames = new ArrayList<>();
-
-        return UserResponse.fromEntity(new User(), permissionNames);
     }
 
 
