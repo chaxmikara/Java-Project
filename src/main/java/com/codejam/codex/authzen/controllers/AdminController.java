@@ -104,18 +104,34 @@ public class AdminController {
     @GetMapping(ApiEndpoint.ADMIN_USERS)
     public ResponseEntity<AuthzenResponse<UserResponse>> getUserDetails(@PathVariable("id") Long userId, HttpServletRequest request) {
         try {
+            // Log the userId for debugging
+            System.out.println("Attempting to get user details for userId: " + userId);
+            
             String username = verifyAdmin(request);
             UserResponse userResponse = adminEndpoint.getUserById(userId);
+            
+            if (userResponse == null) {
+                AuthzenResponse<UserResponse> notFoundResponse = new AuthzenResponse<>(
+                    null, false, "User not found with ID: " + userId
+                );
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(notFoundResponse);
+            }
+            
             AuthzenResponse<UserResponse> response = new AuthzenResponse<>(userResponse);
             response.setMessage("User details retrieved successfully.");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             System.out.println("Error in getUserDetails: " + e.getMessage());
             e.printStackTrace();
+            
+            // Return 401 only for authentication errors
+            HttpStatus status = (e instanceof AccessDeniedException) ? 
+                              HttpStatus.UNAUTHORIZED : HttpStatus.INTERNAL_SERVER_ERROR;
+            
             AuthzenResponse<UserResponse> errorResponse = new AuthzenResponse<>(
                 null, false, "Error retrieving user details: " + e.getMessage()
             );
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            return ResponseEntity.status(status).body(errorResponse);
         }
     }
 
