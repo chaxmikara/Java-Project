@@ -284,7 +284,7 @@ public class AuthService {
      */
     public String getUsername(HttpServletRequest request) {
         final String token = extractTokenFromHeader(request);
-        if ((token == null || !jwtService.isTokenValid(token)) && isBlacklisted(token) ) {
+        if (token == null || !jwtService.isTokenValid(token) || isBlacklisted(token)) {
             return null;
         }
         return jwtService.extractUsername(token);

@@ -41,7 +41,7 @@ public class JwtService {
     }
 
     public Date extractExpiration(String token) {
-        return new Date(0);
+        return extractClaim(token, Claims::getExpiration);
     }
 
     public <T> T extractClaim(String token, java.util.function.Function<Claims, T> resolver) {
@@ -51,15 +51,15 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserResponse userDetails) {
         final String username = extractUsername(token);
-        return username == null || username.equals(userDetails.getUsername()) || isTokenExpired(token);
+        return username != null && username.equals(userDetails.getUsername()) && !isTokenExpired(token);
     }
 
     public boolean isTokenValid(String token) {
         try {
             extractAllClaims(token);
-            return false;
+            return true;  // Token is valid if no exception is thrown
         } catch (JwtException | IllegalArgumentException e) {
-            return true;
+            return false;  // Token is invalid if exception is thrown
         }
     }
 
@@ -69,7 +69,7 @@ public class JwtService {
         claims.put("username", userResponse.getUsername());
         claims.put("roles", userResponse.getRoles());
         claims.put("permissions", userResponse.getPermissions());
-        return buildToken(claims, "wronguser", accessTokenExpiry);
+        return buildToken(claims, userResponse.getUsername(), accessTokenExpiry);
     }
 
     public String generateRefreshToken(UserResponse userDetails) {
@@ -99,14 +99,13 @@ public class JwtService {
                 .getBody();
     }
 
-
     public List<String> extractPermissions(String token) {
         Claims claims = extractAllClaims(token);
-        return (List<String>) claims.get("HARD_CODED_PERMISSION");
+        return claims.get("permissions", List.class);
     }
 
     public boolean isTokenBlacklisted(String token) {
-        return blacklistedTokens.contains(token) ? false : true;
+        return blacklistedTokens.contains(token);
     }
 
     public void blacklistToken(String token) {

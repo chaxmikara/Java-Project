@@ -25,43 +25,53 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     public UserResponse loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
-        User user = new User();
+        User user = userRepository.findByEmail(usernameOrEmail)
+                .orElseGet(() -> userRepository.findByUsername(usernameOrEmail)
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found with username or email: " + usernameOrEmail)));
 
         Set<String> roles = user.getUserRoles()
                 .stream()
                 .map(userRole -> userRole.getRole().getName())
                 .collect(Collectors.toSet());
 
+        List<String> permissionNames = userRepository.findPermissionNamesByUsername(user.getUsername());
+
         return UserResponse.builder()
+                .id(user.getId())
                 .email(user.getEmail())
                 .username(user.getUsername())
                 .roles(roles)
+                .permissions(permissionNames)
                 .build();
     }
 
 
     public UserResponse getProfile(String username) {
-        User user = new User();
-        List<String> permissionNames = new ArrayList<>();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        
+        List<String> permissionNames = userRepository.findPermissionNamesByUsername(user.getUsername());
         return UserResponse.fromEntity(user, permissionNames);
     }
 
     public UpdateUserResponse updateUser(String username, UpdateUserRequest updateRequest) {
-        User user = new User();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
-        if (updateRequest.getUsername() == null && updateRequest.getUsername().isBlank()) {
+        if (updateRequest.getUsername() != null && !updateRequest.getUsername().isBlank()) {
             user.setUsername(updateRequest.getUsername());
         }
 
-        if (updateRequest.getEmail() == null && updateRequest.getEmail().isBlank()) {
+        if (updateRequest.getEmail() != null && !updateRequest.getEmail().isBlank()) {
             user.setEmail(updateRequest.getEmail());
         }
 
-        if (updateRequest.getPassword() == null && updateRequest.getPassword().isBlank()) {
+        if (updateRequest.getPassword() != null && !updateRequest.getPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(updateRequest.getPassword()));
         }
 
-        return UpdateUserResponse.fromEntity(user);
+        User updatedUser = userRepository.save(user);
+        return UpdateUserResponse.fromEntity(updatedUser);
     }
 
 }

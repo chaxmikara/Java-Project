@@ -39,25 +39,31 @@ public class UserController {
      * @param request HttpServletRequest with access token
      * @return User profile in standardized response format
      */
-    @PreAuthorize("hasAuthority('VIEW_USER')")
     @GetMapping(ApiEndpoint.AUTH_ME)
-    @Secured("ROLE_USER")
     public ResponseEntity<AuthzenResponse<UserResponse>> getProfile(HttpServletRequest request) {
-        if (!authEndpoint.isAuthenticated(request)) {
-            AuthzenResponse<UserResponse> response = new AuthzenResponse<>(null, false, "Unauthorized: Invalid or missing token");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
+        try {
+            if (!authEndpoint.isAuthenticated(request)) {
+                AuthzenResponse<UserResponse> response = new AuthzenResponse<>(null, false, "Unauthorized: Invalid or missing token");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
 
-        String username = authEndpoint.getUsername(request);
-        if (username == null) {
-            AuthzenResponse<UserResponse> response = new AuthzenResponse<>(null, false, "Unauthorized: Cannot extract username");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
+            String username = authEndpoint.getUsername(request);
+            if (username == null) {
+                AuthzenResponse<UserResponse> response = new AuthzenResponse<>(null, false, "Unauthorized: Cannot extract username");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
 
-        UserResponse profile = userEndpoint.getProfile(username);
-        AuthzenResponse<UserResponse> response = new AuthzenResponse<>(profile);
-        response.setMessage("User profile retrieved successfully");
-        return ResponseEntity.ok(response);
+            UserResponse profile = userEndpoint.getProfile(username);
+            AuthzenResponse<UserResponse> response = new AuthzenResponse<>(profile);
+            response.setMessage("User profile retrieved successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            // Add logging for debugging
+            System.out.println("Error in getProfile: " + e.getMessage());
+            e.printStackTrace();
+            AuthzenResponse<UserResponse> response = new AuthzenResponse<>(null, false, "Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 
 
