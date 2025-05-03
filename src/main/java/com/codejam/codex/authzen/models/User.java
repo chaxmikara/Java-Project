@@ -68,7 +68,7 @@ public class User {
     }
 
     public void removeEmailToken(EmailToken emailToken) {
-        refreshTokens.remove(emailToken);
+        emailTokens.remove(emailToken);
         emailToken.setUser(null);
     }
 
@@ -98,7 +98,7 @@ public class User {
     }
 
     public void removeAuditLog(AuditLog auditLog) {
-        oauthProviders.remove(auditLog);
+        auditLogs.remove(auditLog);
         auditLog.setUser(null);
     }
 

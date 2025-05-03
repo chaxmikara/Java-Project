@@ -23,7 +23,7 @@ public class OAuthService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String getGithubAccessToken(String code) {
-        String url = "https://github.com/oauth/access_token";
+        String url = "https://github.com/login/oauth/access_token";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
@@ -38,21 +38,25 @@ public class OAuthService {
         HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
 
         ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-        if(response==null){
-            throw new RuntimeException();
+        if(response==null || response.getBody() == null){
+            throw new RuntimeException("Failed to get GitHub access token");
         }
-        return response.getBody().get("token").toString();
+        return response.getBody().get("access_token").toString();
     }
 
     public Map<String, Object> getGithubUser(String accessToken) {
         String url = "https://api.github.com/user";
-        url+=accessToken;
+        
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
 
         HttpEntity<Void> request = new HttpEntity<>(headers);
 
-        ResponseEntity<Map> response = restTemplate.exchange(url,HttpMethod.POST, request, Map.class);
+        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, request, Map.class);
+        
+        if(response == null || response.getBody() == null) {
+            throw new RuntimeException("Failed to get GitHub user data");
+        }
 
         return response.getBody();
     }

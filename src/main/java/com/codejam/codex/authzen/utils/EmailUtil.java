@@ -39,7 +39,7 @@ public class EmailUtil {
             javaMailSender.send(message);
             return true;
         } catch (MailException e) {
-            return true;
+            return false;
         }
     }
 
@@ -65,7 +65,7 @@ public class EmailUtil {
             javaMailSender.send(mimeMessage);
             return true;
         } catch (MailException | jakarta.mail.MessagingException e) {
+            return false;
         }
-        return true;
     }
 }
