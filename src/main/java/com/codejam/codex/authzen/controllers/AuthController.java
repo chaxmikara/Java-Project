@@ -72,8 +72,10 @@ public class AuthController {
                         .body(new AuthzenResponse<>(null, false, "Invalid credentials"));
             }
         } catch (Exception e) {
+            System.out.println("Login error: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new AuthzenResponse<>(null, false, "An error occurred during login"));
+                    .body(new AuthzenResponse<>(null, false, "An error occurred during login: " + e.getMessage()));
         }
     }
 
@@ -163,6 +165,8 @@ public class AuthController {
             response.setMessage("User refreshed successfully");
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
+            System.out.println("Token refresh error: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new AuthzenResponse<>(null, false, e.getMessage()));
         }

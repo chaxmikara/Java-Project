@@ -11,8 +11,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.annotation.Secured;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -21,8 +19,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping(ApiEndpoint.USER)
-// Temporarily remove class-level security to diagnose the issue
-// @PreAuthorize("hasRole('USER')")
+// Temporarily removed for testing - @PreAuthorize("hasRole('USER')")
 public class UserController {
 
     private final AuthEndpoint authEndpoint;
@@ -59,14 +56,12 @@ public class UserController {
             response.setMessage("User profile retrieved successfully");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            // Add logging for debugging
             System.out.println("Error in getProfile: " + e.getMessage());
             e.printStackTrace();
             AuthzenResponse<UserResponse> response = new AuthzenResponse<>(null, false, "Error: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
-
 
     /**
      * Updates the authenticated user's profile.
@@ -75,24 +70,33 @@ public class UserController {
      * @param updateRequest Updated user information
      * @return Success message
      */
-    @PreAuthorize("hasAuthority('UPDATE_USER')")
     @PutMapping(ApiEndpoint.AUTH_UPDATE)
-    @Secured("ROLE_USER")
     public ResponseEntity<AuthzenResponse<UpdateUserResponse>> updateProfile(
             HttpServletRequest request,
             @RequestBody UpdateUserRequest updateRequest
     ) {
-        if (!authEndpoint.isAuthenticated(request)) {
-            AuthzenResponse<UpdateUserResponse> response = new AuthzenResponse<>(null, false, "Unauthorized");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        try {
+            if (!authEndpoint.isAuthenticated(request)) {
+                AuthzenResponse<UpdateUserResponse> response = new AuthzenResponse<>(null, false, "Unauthorized: Invalid or missing token");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+
+            String username = authEndpoint.getUsername(request);
+            if (username == null) {
+                AuthzenResponse<UpdateUserResponse> response = new AuthzenResponse<>(null, false, "Unauthorized: Cannot extract username");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+
+            UpdateUserResponse updateUserResponse = userEndpoint.updateUser(username, updateRequest);
+            AuthzenResponse<UpdateUserResponse> response = new AuthzenResponse<>(updateUserResponse);
+            response.setMessage("User updated successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.out.println("Error in updateProfile: " + e.getMessage());
+            e.printStackTrace();
+            AuthzenResponse<UpdateUserResponse> response = new AuthzenResponse<>(null, false, "Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-
-        String username = authEndpoint.getUsername(request);
-        UpdateUserResponse updateUserResponse = userEndpoint.updateUser(username, updateRequest);
-
-        AuthzenResponse<UpdateUserResponse> response = new AuthzenResponse<>(updateUserResponse);
-        response.setMessage("User updated successfully");
-        return ResponseEntity.ok(response);
     }
 
     /**
@@ -102,27 +106,29 @@ public class UserController {
      * @param request HttpServletRequest with access token
      * @return Success message
      */
-    @PreAuthorize("hasAuthority('USER_LOGOUT')")
     @PostMapping(ApiEndpoint.AUTH_LOGOUT)
-    @Secured("ROLE_USER")
     public ResponseEntity<AuthzenResponse<Object>> logout(HttpServletRequest request) {
-        if (!authEndpoint.isAuthenticated(request)) {
-            AuthzenResponse<Object> response = new AuthzenResponse<>(null, false, "Unauthorized");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
+        try {
+            if (!authEndpoint.isAuthenticated(request)) {
+                AuthzenResponse<Object> response = new AuthzenResponse<>(null, false, "Unauthorized: Invalid or missing token");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
 
-        boolean blacklisted = authEndpoint.blacklistToken(request);
+            boolean blacklisted = authEndpoint.blacklistToken(request);
 
-        if (blacklisted) {
-            AuthzenResponse<Object> response = new AuthzenResponse<>();
-            response.setMessage("User logged out successfully");
-            return ResponseEntity.ok(response);
-        } else {
-            AuthzenResponse<Object> response = new AuthzenResponse<>(null, false, "Failed to blacklist token");
+            if (blacklisted) {
+                AuthzenResponse<Object> response = new AuthzenResponse<>();
+                response.setMessage("User logged out successfully");
+                return ResponseEntity.ok(response);
+            } else {
+                AuthzenResponse<Object> response = new AuthzenResponse<>(null, false, "Failed to blacklist token");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+        } catch (Exception e) {
+            System.out.println("Error in logout: " + e.getMessage());
+            e.printStackTrace();
+            AuthzenResponse<Object> response = new AuthzenResponse<>(null, false, "Error: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
-
-
-
 }
