@@ -112,18 +112,23 @@ public class AuthController {
     @PostMapping(ApiEndpoint.AUTH_RESET_REQUEST)
     public ResponseEntity<AuthzenResponse<Object>> resetPasswordRequest(@RequestBody ResetRequest request) {
         try {
+            System.out.println("Password reset request received for email: " + request.getEmail());
             boolean emailSent = authEndpoint.sendPasswordResetEmail(request);
             if (emailSent) {
                 AuthzenResponse<Object> response = new AuthzenResponse<>();
                 response.setMessage("Password reset email sent");
+                System.out.println("Password reset email successfully sent to: " + request.getEmail());
                 return ResponseEntity.ok(response);
             } else {
+                System.out.println("Failed to send reset email to: " + request.getEmail());
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new AuthzenResponse<>(null, false, "Failed to send reset email"));
             }
         } catch (Exception e) {
+            System.out.println("Error in resetPasswordRequest: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new AuthzenResponse<>(null, false, "An error occurred while sending reset request"));
+                    .body(new AuthzenResponse<>(null, false, "An error occurred while sending reset request: " + e.getMessage()));
         }
     }
 
@@ -136,18 +141,23 @@ public class AuthController {
     @PostMapping(ApiEndpoint.AUTH_RESET_PASSWORD)
     public ResponseEntity<AuthzenResponse<Object>> resetPassword(@RequestBody ResetPasswordRequest request) {
         try {
+            System.out.println("Password reset attempt received for: " + request.getEmail() + " with token length: " + request.getToken().length());
             boolean isPasswordReset = authEndpoint.resetUserPassword(request);
             if (isPasswordReset) {
                 AuthzenResponse<Object> response = new AuthzenResponse<>();
                 response.setMessage("Password reset successfully");
+                System.out.println("Password reset successful for: " + request.getEmail());
                 return ResponseEntity.ok(response);
             } else {
+                System.out.println("Password reset failed for: " + request.getEmail());
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new AuthzenResponse<>(null, false, "Failed to reset password"));
+                        .body(new AuthzenResponse<>(null, false, "Failed to reset password - Invalid or expired token"));
             }
         } catch (Exception e) {
+            System.out.println("Error in resetPassword: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new AuthzenResponse<>(null, false, "An error occurred during password reset"));
+                    .body(new AuthzenResponse<>(null, false, "An error occurred during password reset: " + e.getMessage()));
         }
     }
 

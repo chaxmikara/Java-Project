@@ -214,35 +214,52 @@ public class AuthService {
      * @return true if the password was successfully reset, false otherwise.
      */
     public boolean resetUserPassword(ResetPasswordRequest request) {
+        System.out.println("Password reset attempt for email: " + request.getEmail() + " with token: " + request.getToken());
+        
         Optional<EmailToken> tokenOptional = emailTokenRepository.findByToken(request.getToken());
-        if (tokenOptional.isPresent()) {
-            EmailToken token = tokenOptional.get();
-
-            if (token.getExpiresAt().before(Timestamp.from(Instant.now()))) {
-                return false;
-            }
-
-            if (!"RESET_PASSWORD".equals(token.getPurpose())) {
-                return false;
-            }
-
-            Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
-            if (userOptional.isPresent()) {
-                User user = userOptional.get();
-
-                if (!user.equals(token.getUser())) {
-                    return false;
-                }
-
-                user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-                userRepository.save(user);
-
-                emailTokenRepository.delete(token);
-
-                return true;
-            }
+        if (tokenOptional.isEmpty()) {
+            System.out.println("Token not found: " + request.getToken());
+            return false;
         }
-        return false;
+        
+        EmailToken token = tokenOptional.get();
+        
+        if (token.getExpiresAt().before(Timestamp.from(Instant.now()))) {
+            System.out.println("Token expired at: " + token.getExpiresAt());
+            return false;
+        }
+        
+        if (!"RESET_PASSWORD".equals(token.getPurpose())) {
+            System.out.println("Invalid token purpose: " + token.getPurpose());
+            return false;
+        }
+        
+        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
+        if (userOptional.isEmpty()) {
+            System.out.println("User not found with email: " + request.getEmail());
+            return false;
+        }
+        
+        User user = userOptional.get();
+        
+        if (!user.getId().equals(token.getUser().getId())) {
+            System.out.println("Token not issued for this user. Token user ID: " + token.getUser().getId() + ", Request user ID: " + user.getId());
+            return false;
+        }
+        
+        try {
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+            userRepository.save(user);
+            
+            emailTokenRepository.delete(token);
+            System.out.println("Password reset successful for: " + request.getEmail());
+            
+            return true;
+        } catch (Exception e) {
+            System.out.println("Error resetting password: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 
     /**
